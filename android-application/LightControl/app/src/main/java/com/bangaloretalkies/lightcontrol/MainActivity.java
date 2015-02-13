@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.Switch;
 
@@ -23,19 +24,35 @@ public class MainActivity extends Activity {
     private static final int SERVER_PORT = 10000;
     private static final int TIMEOUT_MS = 2500;
     private int dynamic_timeout_ms;
+    private Integer dynamic_server_port;
+
+    private EditText editTextPort;
+    private EditText editTextIp;
 
     private boolean isSwitchChecked = false;
 
     private InetAddress getIpAddress() throws IOException {
-        return InetAddress.getByName("10.0.0.102");
+
+        return InetAddress.getByName(editTextIp.getText().toString());
     }
 
     private void sendOnRequest(DatagramSocket socket) throws IOException {
         String data = String.format("ON");
         Log.d(TAG, "Sending data " + data);
 
+        if (null != editTextPort && null != editTextPort.getText()) {
+            Integer dsp = new Integer(editTextPort.getText().toString());
+            dynamic_server_port = dsp.intValue();
+            if (dynamic_server_port > 65535) {
+                dynamic_server_port = SERVER_PORT;
+                editTextPort.setText("10000");
+            }
+        }
+        else {
+            dynamic_server_port = SERVER_PORT;
+        }
         DatagramPacket packet = new DatagramPacket(data.getBytes(), data.length(),
-                getIpAddress(), SERVER_PORT);
+                getIpAddress(), dynamic_server_port);
         socket.send(packet);
     }
 
@@ -43,8 +60,19 @@ public class MainActivity extends Activity {
         String data = String.format("OF");
         Log.d(TAG, "Sending data " + data);
 
+        if (null != editTextPort && null != editTextPort.getText()) {
+            Integer dsp = new Integer(editTextPort.getText().toString());
+            dynamic_server_port = dsp.intValue();
+            if (dynamic_server_port > 65535) {
+                dynamic_server_port = SERVER_PORT;
+                editTextPort.setText("10000");
+            }
+        }
+        else {
+            dynamic_server_port = SERVER_PORT;
+        }
         DatagramPacket packet = new DatagramPacket(data.getBytes(), data.length(),
-                getIpAddress(), SERVER_PORT);
+                getIpAddress(), dynamic_server_port);
         socket.send(packet);
     }
 
@@ -84,6 +112,9 @@ public class MainActivity extends Activity {
         seekBar.setMax(5000);
         seekBar.setProgress(TIMEOUT_MS);
         dynamic_timeout_ms = TIMEOUT_MS;
+
+        editTextPort = (EditText) findViewById(R.id.editTextPort);
+        editTextIp = (EditText) findViewById(R.id.editTextIp);
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
