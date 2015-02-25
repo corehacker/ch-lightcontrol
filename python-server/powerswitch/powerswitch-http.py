@@ -25,22 +25,11 @@ class UDPDiscoverServerTask(threading.Thread):
       print >> sys.stderr, 'Starting UDP Server on %s port %s' % server_address
       sock.bind(server_address)
 
-      
-
       while True:
          discover_send_str = ""
          data, address = sock.recvfrom(len(discover_str))
          print >> sys.stderr, 'received %s bytes from %s' % (len(discover_str), address)
          print >> sys.stderr, data
-         
-         #p1 = Popen(split("/sbin/ifconfig"), stdout=PIPE)
-         #p2 = Popen(split("grep \"inet addr\""), stdin=p1.stdout)
-         #p3 = Popen(split("awk -F: '{print $2}'"), stdin=p2.stdout)
-         #output = Popen(split("awk '{print $1}'"), stdin=p3.stdout)
-         
-         #bashCommand = "/sbin/ifconfig eth0 | grep \"inet addr\" | awk -F: '{print $2}' | awk '{print $1}'"
-         #process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-         #output = process.communicate()[0]
          
          f = open('/tmp/ifconfig','w+')
          output = str (subprocess.call("/sbin/ifconfig | grep \"inet addr\" | awk -F: '{print $2}' | awk '{print $1}'", shell=True, stdout=f))
