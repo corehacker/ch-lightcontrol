@@ -12,10 +12,19 @@ import sys
 import subprocess
 from subprocess import Popen, PIPE
 from shlex import split
+from daemon import Daemon
+import RPi.GPIO as io
 
 class UDPDiscoverServerTask(threading.Thread):
    def run(self):
+      str_max_size = 1024
       discover_str = "discover"
+      on_str = "on"
+      off_str = "off"
+
+      io.setmode(io.BCM)
+      power_pin = 23
+      io.setup(power_pin, io.OUT)
 
       # Create a TCP/IP socket
       sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -27,24 +36,37 @@ class UDPDiscoverServerTask(threading.Thread):
 
       while True:
          discover_send_str = ""
-         data, address = sock.recvfrom(len(discover_str))
-         print >> sys.stderr, 'received %s bytes from %s' % (len(discover_str), address)
+         data, address = sock.recvfrom(str_max_size)
+         print >> sys.stderr, 'received %s bytes from %s' % (len(data), address)
          print >> sys.stderr, data
-         
-         f = open('/tmp/ifconfig','w+')
-         output = str (subprocess.call("/sbin/ifconfig | grep \"inet addr\" | awk -F: '{print $2}' | awk '{print $1}'", shell=True, stdout=f))
-         f.flush()
-         f.close()
-         f = open('/tmp/ifconfig','r')
-         for line in f:
-            #print line
-            discover_send_str = discover_send_str + line.strip() + ":8080/discover|"
-         f.close()
-         print discover_send_str
-         
 
-         sent = sock.sendto(discover_send_str, address)
-         print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
+         if data == discover_str:
+             f = open('/tmp/ifconfig','w+')
+             output = str (subprocess.call("/sbin/ifconfig | grep \"inet addr\" | awk -F: '{print $2}' | awk '{print $1}'", shell=True, stdout=f))
+             f.flush()
+             f.close()
+             f = open('/tmp/ifconfig','r')
+             for line in f:
+                if line.strip() != "127.0.0.1":
+                    discover_send_str = discover_send_str + line.strip() + ":8080/discover|"
+             f.close()
+             print discover_send_str
+
+             sent = sock.sendto(discover_send_str, address)
+             print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
+         elif data == on_str:
+             print("POWER ON")
+             io.output(power_pin, True)
+             sent = sock.sendto(on_str, address)
+             print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
+         elif data == off_str:
+             print("POWER OFF")
+             io.output(power_pin, False)
+             sent = sock.sendto(off_str, address);
+             print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
+         else:
+             sent = sock.sendto("error", address);
+             print >>sys.stderr, 'sent %s bytes back to %s' % (sent, address)
 
       return
 
@@ -108,10 +130,37 @@ class PostHandler(BaseHTTPRequestHandler):
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
-if __name__ == '__main__':
-    udpSocketServerTask = UDPDiscoverServerTask()
-    udpSocketServerTask.start()
 
-    server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
-    print 'Starting server, use <Ctrl-C> to stop'
-    server.serve_forever()
+class MyDaemon(Daemon):
+    def run(self):
+        udpSocketServerTask = UDPDiscoverServerTask()
+        udpSocketServerTask.start()
+
+        server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
+        print 'Starting server, use <Ctrl-C> to stop'
+        server.serve_forever()
+
+if __name__ == "__main__":
+        daemon = MyDaemon('/tmp/powerswitch.pid')
+        if len(sys.argv) == 2:
+                if 'start' == sys.argv[1]:
+                        daemon.start()
+                elif 'stop' == sys.argv[1]:
+                        daemon.stop()
+                elif 'restart' == sys.argv[1]:
+                        daemon.restart()
+                else:
+                        print "Unknown command"
+                        sys.exit(2)
+                sys.exit(0)
+        else:
+                print "usage: %s start|stop|restart" % sys.argv[0]
+                sys.exit(2)
+
+#if __name__ == '__main__':
+#    udpSocketServerTask = UDPDiscoverServerTask()
+#    udpSocketServerTask.start()
+#
+#    server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
+#    print 'Starting server, use <Ctrl-C> to stop'
+#    server.serve_forever()

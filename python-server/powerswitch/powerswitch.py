@@ -3,12 +3,12 @@
 import socket
 import sys
 from daemon import Daemon
-import time 
-import RPi.GPIO as io 
+import time
+import RPi.GPIO as io
 
 class MyDaemon(Daemon):
 	def run(self):
-		io.setmode(io.BCM) 
+		io.setmode(io.BCM)
 		power_pin = 23
 		io.setup(power_pin, io.OUT)
 
