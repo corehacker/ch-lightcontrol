@@ -1,5 +1,138 @@
 package com.bangaloretalkies.lightcontrol;
 
+import com.bangaloretalkies.lightcontrol.TabsPagerAdapter;
+import com.bangaloretalkies.lightcontrol.R;
+import android.app.ActionBar;
+import android.app.ActionBar.Tab;
+import android.app.FragmentTransaction;
+import android.os.Bundle;
+import android.os.Handler;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.view.ViewPager;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.app.Activity;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.EditText;
+import android.widget.SeekBar;
+import android.widget.Switch;
+import android.widget.TextView;
+
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
+import java.util.Enumeration;
+
+public class MainActivity extends FragmentActivity implements
+        ActionBar.TabListener {
+
+    private ViewPager viewPager;
+    private TabsPagerAdapter mAdapter;
+    private ActionBar actionBar;
+
+    // Tab titles
+    private String[] tabs = { "Discover", "Operate"};
+
+    private static final String TAG = "MainActivity";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        setContentView(R.layout.activity_main);
+
+        // Initilization
+        viewPager = (ViewPager) findViewById(R.id.pager);
+        actionBar = getActionBar();
+        mAdapter = new TabsPagerAdapter(getSupportFragmentManager());
+
+        viewPager.setAdapter(mAdapter);
+        actionBar.setHomeButtonEnabled(false);
+        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
+
+        // Adding Tabs
+        for (String tab_name : tabs) {
+            actionBar.addTab(actionBar.newTab().setText(tab_name)
+                    .setTabListener(this));
+        }
+
+        /**
+         * on swiping the viewpager make respective tab selected
+         * */
+        viewPager.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+
+            @Override
+            public void onPageSelected(int position) {
+                // on changing the page
+                // make respected tab selected
+                actionBar.setSelectedNavigationItem(position);
+            }
+
+            @Override
+            public void onPageScrolled(int arg0, float arg1, int arg2) {
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int arg0) {
+            }
+        });
+
+
+        viewPager.setCurrentItem(1);
+    }
+
+    @Override
+    public void onTabReselected(Tab tab, FragmentTransaction ft) {
+    }
+
+    @Override
+    public void onTabSelected(Tab tab, FragmentTransaction ft) {
+        // on tab selected
+        // show respected fragment view
+        viewPager.setCurrentItem(tab.getPosition());
+    }
+
+    @Override
+    public void onTabUnselected(Tab tab, FragmentTransaction ft) {
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+}
+
+/*
 import android.app.Activity;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -16,7 +149,12 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InterfaceAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.Enumeration;
+
 
 public class MainActivity extends Activity {
 
@@ -34,6 +172,30 @@ public class MainActivity extends Activity {
     private InetAddress getIpAddress() throws IOException {
 
         return InetAddress.getByName(editTextIp.getText().toString());
+    }
+
+    public static InetAddress getBroadcastAddress() throws SocketException {
+        System.setProperty("java.net.preferIPv4Stack", "true");
+        for (Enumeration<NetworkInterface> niEnum = NetworkInterface.getNetworkInterfaces(); niEnum.hasMoreElements();) {
+            NetworkInterface ni = niEnum.nextElement();
+            if (!ni.isLoopback()) {
+                for (InterfaceAddress interfaceAddress : ni.getInterfaceAddresses()) {
+                    Log.e(TAG, "Broadcast Address: " + interfaceAddress.getBroadcast());
+
+                    if (null != interfaceAddress.getBroadcast())
+                        return interfaceAddress.getBroadcast();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void sendDiscoverRequest(DatagramSocket socket) throws IOException {
+        String data = String.format("discover");
+
+        DatagramPacket packet = new DatagramPacket(data.getBytes(), data.length(),
+                getBroadcastAddress(), 8080);
+        socket.send(packet);
     }
 
     private void sendOnRequest(DatagramSocket socket) throws IOException {
@@ -77,7 +239,7 @@ public class MainActivity extends Activity {
     }
 
     private void listenForResponses(DatagramSocket socket) throws IOException {
-        byte[] buf = new byte[2];
+        byte[] buf = new byte[1024];
         try {
             while (true) {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
@@ -93,6 +255,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
         Switch onOffSwitch = (Switch)  findViewById(R.id.lightcontrolswitch1);
@@ -134,17 +297,12 @@ public class MainActivity extends Activity {
         });
     }
 
-
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
-
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -170,6 +328,14 @@ public class MainActivity extends Activity {
                 //socket.setBroadcast(true);
                 socket.setSoTimeout(TIMEOUT_MS);
 
+                DatagramSocket discoverSocket = new DatagramSocket();
+                discoverSocket.setBroadcast(true);
+                discoverSocket.setSoTimeout(dynamic_timeout_ms);
+
+                sendDiscoverRequest (discoverSocket);
+                listenForResponses(discoverSocket);
+                discoverSocket.close();
+
                 if (isSwitchChecked)
                 {
                     sendOnRequest(socket);
@@ -190,3 +356,4 @@ public class MainActivity extends Activity {
         }
     }
 }
+*/
