@@ -19,11 +19,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
-import java.util.Enumeration;
 
 public class OperateFragment extends Fragment implements View.OnClickListener {
     private static final String TAG = "OperateFragment";
@@ -146,6 +142,9 @@ public class OperateFragment extends Fragment implements View.OnClickListener {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
+
+
+
 
         return rootView;
     }

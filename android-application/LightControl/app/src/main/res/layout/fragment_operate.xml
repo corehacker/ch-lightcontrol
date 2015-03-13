@@ -63,4 +63,5 @@
         android:layout_alignStart="@+id/editTextPort"
         android:layout_alignParentEnd="true"
         android:text="127.0.0.1" />
+
 </RelativeLayout>
