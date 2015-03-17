@@ -28,7 +28,7 @@ class IcmpPingTask(threading.Thread):
 
                default_gateway = str (socket.inet_ntoa(struct.pack("<L", int(fields[2], 16))))
 
-         ping_str = "/bin/ping -i 10 -c 10 " + default_gateway
+         ping_str = "/bin/ping -i 5 -c 5 " + default_gateway
          subprocess.call(ping_str, shell=True)
 
 
