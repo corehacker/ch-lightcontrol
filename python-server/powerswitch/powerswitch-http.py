@@ -16,23 +16,20 @@ from daemon import Daemon
 import RPi.GPIO as io
 
 
-#class IcmpPingTask(threading.Thread):
-#       def get_default_gateway_linux():
-#               """Read the default gateway directly from /proc."""
-#               with open("/proc/net/route") as fh:
-#                       for line in fh:
-#                               fields = line.strip().split()
-#                               if fields[1] != '00000000' or not int(fields[3], 16) & 2:
-#                                       continue
-#
-#                               return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-#
-#       def run(self):
-#               while True:
-#                       ping_str = "/bin/ping -i 5 -c 10 " # str (get_default_gateway_linux())
-#                       subprocess.call(ping_str, shell=True)
-#
-#               return
+class IcmpPingTask(threading.Thread):
+   def run(self):
+      while True:
+         default_gateway = "192.168.1.1"
+         with open("/proc/net/route") as fh:
+            for line in fh:
+               fields = line.strip().split()
+               if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+                  continue
+
+               default_gateway = str (socket.inet_ntoa(struct.pack("<L", int(fields[2], 16))))
+
+         ping_str = "/bin/ping -i 10 -c 10 " + default_gateway
+         subprocess.call(ping_str, shell=True)
 
 
 class UDPDiscoverServerTask(threading.Thread):
@@ -153,6 +150,9 @@ class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
 
 class MyDaemon(Daemon):
     def run(self):
+        icmpPingTask = IcmpPingTask()
+        icmpPingTask.start();
+
         udpSocketServerTask = UDPDiscoverServerTask()
         udpSocketServerTask.start()
 
