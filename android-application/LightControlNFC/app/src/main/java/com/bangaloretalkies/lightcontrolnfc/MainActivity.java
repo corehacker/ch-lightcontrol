@@ -3,12 +3,14 @@ package com.bangaloretalkies.lightcontrolnfc;
 import android.app.ActionBar;
 import android.app.ActionBar.Tab;
 import android.app.FragmentTransaction;
+import android.nfc.NfcAdapter;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.view.ViewPager;
 import android.view.Menu;
 
 import android.view.MenuItem;
+import android.widget.Toast;
 
 
 public class MainActivity extends FragmentActivity implements
@@ -18,7 +20,7 @@ public class MainActivity extends FragmentActivity implements
     private TabsPagerAdapter mAdapter;
     private ActionBar actionBar;
 
-
+    private NfcAdapter mNfcAdapter;
 
     // Tab titles
     private String[] tabs = { "Discover", "Operate"};
@@ -71,6 +73,18 @@ public class MainActivity extends FragmentActivity implements
         viewPager.setCurrentItem(1);
 
 
+
+        mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+        if (mNfcAdapter == null) {
+            // Stop here, we definitely need NFC
+            Toast.makeText(this, "This device doesn't support NFC.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+
+        } else {
+            Toast.makeText(this, "This device does support NFC.", Toast.LENGTH_LONG).show();
+
+        }
 
     }
 

@@ -186,6 +186,16 @@ public class OperateFragment extends Fragment implements View.OnClickListener {
         });
     }
 
+    public String getIp ()
+    {
+        return editTextIp.getText().toString();
+    }
+
+    public String getPort ()
+    {
+        return editTextPort.getText().toString();
+    }
+
 
     public class MyTask extends AsyncTask<Boolean, Integer, Boolean> {
 

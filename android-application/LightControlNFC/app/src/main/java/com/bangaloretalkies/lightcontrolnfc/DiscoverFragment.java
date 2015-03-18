@@ -6,6 +6,7 @@ package com.bangaloretalkies.lightcontrolnfc;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -28,6 +29,10 @@ public class DiscoverFragment extends Fragment {
     private static final String TAG = "DiscoverFragment";
     private TextView textView;
     private Button refreshButton;
+
+    private int mInterval = 2000; // 5 seconds by default, can be changed later
+    private Handler mHandler;
+    OperateFragment operateFragment;
 
     private void sendDiscoverRequest(DatagramSocket socket) throws IOException {
         String data = String.format("discover");
@@ -66,11 +71,12 @@ public class DiscoverFragment extends Fragment {
                     //textView.setText(s.toCharArray(), 0, s.length());
                 //}
 
-                String tagName = "android:switcher:" + R.id.pager + ":" + 1;
-                //Log.d(TAG, "Tag Name: " + tagName);
-                OperateFragment f2 = (OperateFragment) getActivity().getSupportFragmentManager().findFragmentByTag(tagName);
-                //f2.updateIp(s.split("|").toString().split(":").toString());
-
+                if (null == operateFragment) {
+                    String tagName = "android:switcher:" + R.id.pager + ":" + 1;
+                    //Log.d(TAG, "Tag Name: " + tagName);
+                    operateFragment = (OperateFragment) getActivity().getSupportFragmentManager().findFragmentByTag(tagName);
+                    //f2.updateIp(s.split("|").toString().split(":").toString());
+                }
 
                 String[] hosts = s.split(":");
                 //String[] host1params = hosts[0].split(":");
@@ -79,13 +85,38 @@ public class DiscoverFragment extends Fragment {
 
                 Log.d(TAG, "IP: " + hosts[0]);
                 Log.d(TAG, "Port: " + port[0]);
-                f2.updateIp(hosts[0]);
-                f2.updatePort(port[0]);
+                operateFragment.updateIp(hosts[0]);
+                operateFragment.updatePort(port[0]);
                 break;
             }
         } catch (SocketTimeoutException e) {
             Log.d(TAG, "Receive timed out");
         }
+    }
+
+    Runnable mStatusChecker = new Runnable() {
+        @Override
+        public void run() {
+            if (null == operateFragment)
+            {
+                String tagName = "android:switcher:" + R.id.pager + ":" + 1;
+                operateFragment = (OperateFragment) getActivity().getSupportFragmentManager().findFragmentByTag(tagName);
+            }
+
+            if (null != operateFragment) {
+                if (operateFragment.getIp().equals("127.0.0.1"))
+                    new MyTask().execute();
+            }
+            mHandler.postDelayed(mStatusChecker, mInterval);
+        }
+    };
+
+    void startRepeatingTask() {
+        mStatusChecker.run();
+    }
+
+    void stopRepeatingTask() {
+        mHandler.removeCallbacks(mStatusChecker);
     }
 
     @Override
@@ -103,7 +134,13 @@ public class DiscoverFragment extends Fragment {
             }
         });
 
+        mHandler = new Handler();
+        startRepeatingTask();
+
         new MyTask().execute();
+
+        String tagName = "android:switcher:" + R.id.pager + ":" + 1;
+        operateFragment = (OperateFragment) getActivity().getSupportFragmentManager().findFragmentByTag(tagName);
 
         return rootView;
     }
@@ -117,7 +154,7 @@ public class DiscoverFragment extends Fragment {
             try {
                 DatagramSocket discoverSocket = new DatagramSocket();
                 discoverSocket.setBroadcast(true);
-                discoverSocket.setSoTimeout(5000);
+                discoverSocket.setSoTimeout(1500);
 
                 sendDiscoverRequest (discoverSocket);
                 listenForResponses(discoverSocket);
