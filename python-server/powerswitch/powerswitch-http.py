@@ -14,7 +14,32 @@ from subprocess import Popen, PIPE
 from shlex import split
 from daemon import Daemon
 import RPi.GPIO as io
+import time
+import struct
 
+
+class SwitchTask(threading.Thread):
+   def run(self):
+      io.setmode(io.BCM)
+      io.setup(18, io.IN, pull_up_down=io.PUD_UP)
+
+      power_pin = 23
+      io.setup(power_pin, io.OUT)
+
+      powerswitch_state = False;
+
+      while True:
+         input_state = io.input(18)
+         if input_state == False:
+            print('Button Pressed: ' + str(powerswitch_state))
+            if powerswitch_state == False:
+               io.output(power_pin, True)
+               powerswitch_state = True;
+            else:
+               io.output(power_pin, False)
+               powerswitch_state = False;
+
+            time.sleep(0.5)
 
 class IcmpPingTask(threading.Thread):
    def run(self):
@@ -147,40 +172,44 @@ class PostHandler(BaseHTTPRequestHandler):
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle requests in a separate thread."""
 
+def init_threads():
+    io.setwarnings(False)
+
+    switchTask = SwitchTask()
+    switchTask.start()
+
+    icmpPingTask = IcmpPingTask()
+    icmpPingTask.start()
+
+    udpSocketServerTask = UDPDiscoverServerTask()
+    udpSocketServerTask.start()
+
+    server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
+    print 'Starting server, use <Ctrl-C> to stop\n'
+    server.serve_forever()
 
 class MyDaemon(Daemon):
     def run(self):
-        icmpPingTask = IcmpPingTask()
-        icmpPingTask.start();
+       init_threads()
 
-        udpSocketServerTask = UDPDiscoverServerTask()
-        udpSocketServerTask.start()
+def daemonize():
+    daemon = MyDaemon('/tmp/powerswitch.pid')
+    if len(sys.argv) == 2:
+            if 'start' == sys.argv[1]:
+                    daemon.start()
+            elif 'stop' == sys.argv[1]:
+                    daemon.stop()
+            elif 'restart' == sys.argv[1]:
+                    daemon.restart()
+            else:
+                    print "Unknown command"
+                    sys.exit(2)
+            sys.exit(0)
+    else:
+            print "usage: %s start|stop|restart" % sys.argv[0]
+            sys.exit(2)
 
-        server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
-        print 'Starting server, use <Ctrl-C> to stop'
-        server.serve_forever()
+if __name__ == '__main__':
+   daemonize()
+    #init_threads()
 
-if __name__ == "__main__":
-        daemon = MyDaemon('/tmp/powerswitch.pid')
-        if len(sys.argv) == 2:
-                if 'start' == sys.argv[1]:
-                        daemon.start()
-                elif 'stop' == sys.argv[1]:
-                        daemon.stop()
-                elif 'restart' == sys.argv[1]:
-                        daemon.restart()
-                else:
-                        print "Unknown command"
-                        sys.exit(2)
-                sys.exit(0)
-        else:
-                print "usage: %s start|stop|restart" % sys.argv[0]
-                sys.exit(2)
-
-#if __name__ == '__main__':
-#    udpSocketServerTask = UDPDiscoverServerTask()
-#    udpSocketServerTask.start()
-#
-#    server = ThreadedHTTPServer(('0.0.0.0', 8080), PostHandler)
-#    print 'Starting server, use <Ctrl-C> to stop'
-#    server.serve_forever()
